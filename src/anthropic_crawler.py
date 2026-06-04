@@ -3,6 +3,7 @@ Anthropic 动态爬虫
 - anthropic.com/news  官方博客/公告
 - github.com/anthropics  开源项目最新动态
 """
+import datetime
 import requests
 from bs4 import BeautifulSoup
 
@@ -45,13 +46,16 @@ def _get_anthropic_github(limit: int = 5) -> list[dict]:
     try:
         resp = requests.get(
             "https://api.github.com/orgs/anthropics/repos",
-            params={"sort": "updated", "per_page": limit},
+            params={"sort": "updated", "per_page": 30},   # 多拉一些再过滤
             headers={"User-Agent": "AI-News-Agent/1.0"},
             timeout=15,
         )
         resp.raise_for_status()
         results = []
+        cutoff = (datetime.datetime.utcnow() - datetime.timedelta(days=7)).strftime("%Y-%m-%d")
         for repo in resp.json():
+            if repo["updated_at"][:10] < cutoff:
+                continue
             desc = repo.get("description") or "暂无描述"
             results.append({
                 "source": "Anthropic GitHub",
@@ -59,6 +63,8 @@ def _get_anthropic_github(limit: int = 5) -> list[dict]:
                 "url":    repo["html_url"],
                 "note":   f"⭐{repo['stargazers_count']}  更新于 {repo['updated_at'][:10]}  {desc}",
             })
+            if len(results) >= limit:
+                break
         return results
     except Exception as e:
         print(f"  ⚠️  Anthropic GitHub 抓取失败: {e}")
