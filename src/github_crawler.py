@@ -24,7 +24,7 @@ def _is_ai_related(title: str, description: str) -> bool:
     return any(kw in text for kw in AI_KEYWORDS)
 
 
-def get_github_trending(since: str = "daily", limit: int = 10) -> list[dict]:
+def get_github_trending(since: str = "weekly", limit: int = 10) -> list[dict]:
     url = f"https://github.com/trending?since={since}"
     try:
         resp = requests.get(url, headers=HEADERS, timeout=15)

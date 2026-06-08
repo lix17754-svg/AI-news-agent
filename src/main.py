@@ -48,8 +48,8 @@ def main():
 
     print("📝  写入飞书文档...")
     writer = FeishuDocWriter(feishu_app_id, feishu_app_secret, feishu_doc_token)
-    writer.write_daily_report(official_items, github_items, reading_items,
-                              daily_summary=daily_summary)
+    writer.write_weekly_report(official_items, github_items, reading_items,
+                               weekly_summary=daily_summary)
 
     print("\n🎉  完成！")
 

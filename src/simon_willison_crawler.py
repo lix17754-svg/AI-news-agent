@@ -1,9 +1,9 @@
 """
-Simon Willison 博客爬虫 - 通过 RSS 抓取
-simonwillison.net 每日更新 AI 动态，有标准 RSS feed
+Simon Willison 博客爬虫 - 近7天，通过 RSS
 """
 import datetime
 import feedparser
+from bs4 import BeautifulSoup
 
 RSS_URLS = [
     "https://simonwillison.net/atom/entries/",
@@ -11,8 +11,8 @@ RSS_URLS = [
 ]
 
 
-def get_simon_willison_posts(limit: int = 5, hours_back: int = 72) -> list[dict]:
-    cutoff = datetime.datetime.utcnow() - datetime.timedelta(hours=hours_back)
+def get_simon_willison_posts(limit: int = 5, days_back: int = 7) -> list[dict]:
+    cutoff = datetime.datetime.utcnow() - datetime.timedelta(days=days_back)
     feed = None
 
     for url in RSS_URLS:
@@ -36,10 +36,9 @@ def get_simon_willison_posts(limit: int = 5, hours_back: int = 72) -> list[dict]
                 continue
 
         title = entry.get("title", "").strip()
-        url = entry.get("link", "")
+        url   = entry.get("link", "")
         description = entry.get("summary", "")
         if description:
-            from bs4 import BeautifulSoup
             description = BeautifulSoup(description, "html.parser").get_text()[:200].strip()
 
         if not title or not url:
@@ -55,5 +54,5 @@ def get_simon_willison_posts(limit: int = 5, hours_back: int = 72) -> list[dict]
         if len(results) >= limit:
             break
 
-    print(f"  ✅ Simon Willison {len(results)} 条")
+    print(f"  ✅ Simon Willison {len(results)} 条（近{days_back}天）")
     return results

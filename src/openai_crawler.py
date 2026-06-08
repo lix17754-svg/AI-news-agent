@@ -1,7 +1,6 @@
 """
-OpenAI 官方发布爬虫
-OpenAI 网页全部 403，改用 sitemap 获取最新发布 URL + 日期
-slug 转标题作为展示名
+OpenAI 官方发布爬虫 - 近7天
+OpenAI 网页全部 403，通过 sitemap 获取最新发布 URL + 日期
 """
 import re
 import datetime
@@ -16,11 +15,10 @@ SITEMAP_URLS = [
 
 
 def _slug_to_title(slug: str) -> str:
-    words = slug.strip("/").split("-")
-    return " ".join(w.capitalize() for w in words)
+    return " ".join(w.capitalize() for w in slug.strip("/").split("-"))
 
 
-def get_openai_news(limit: int = 5, days_back: int = 3) -> list[dict]:
+def get_openai_news(limit: int = 5, days_back: int = 7) -> list[dict]:
     cutoff = (datetime.datetime.utcnow() - datetime.timedelta(days=days_back)).strftime("%Y-%m-%d")
     seen = set()
     results = []
@@ -29,12 +27,12 @@ def get_openai_news(limit: int = 5, days_back: int = 3) -> list[dict]:
         try:
             r = requests.get(sitemap_url, headers=HEADERS, timeout=15)
             r.raise_for_status()
-            locs  = re.findall(r"<loc>(.*?)</loc>", r.text)
-            mods  = re.findall(r"<lastmod>(.*?)</lastmod>", r.text)
+            locs = re.findall(r"<loc>(.*?)</loc>", r.text)
+            mods = re.findall(r"<lastmod>(.*?)</lastmod>", r.text)
 
             for loc, mod in zip(locs, mods):
                 if mod[:10] < cutoff:
-                    break  # sitemap 按时间倒序，遇到旧的直接停
+                    break  # sitemap 按时间倒序
                 if loc in seen:
                     continue
                 seen.add(loc)
@@ -47,11 +45,12 @@ def get_openai_news(limit: int = 5, days_back: int = 3) -> list[dict]:
                     "title": title,
                     "url": loc,
                     "description": "",
+                    "date": mod[:10],
                     "summary": "",
                 })
         except Exception as e:
-            print(f"  ⚠️  OpenAI sitemap {sitemap_url} 失败: {e}")
+            print(f"  ⚠️  OpenAI sitemap 失败: {e}")
 
     results = results[:limit]
-    print(f"  ✅ OpenAI {len(results)} 条")
+    print(f"  ✅ OpenAI {len(results)} 条（近{days_back}天）")
     return results

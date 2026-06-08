@@ -104,19 +104,36 @@ requests.post(
 - **YouTube 找不到频道**：检查 handle 是否正确（不含 @），部分频道 handle 与显示名不同
 
 ## 当前进度
-_最后更新：2026-06-03_
+_最后更新：2026-06-04_
 
 ### ✅ 已完成
 - 完整 Agent 搭建：YouTube / GitHub Trending / Anthropic 三路爬虫 + 飞书文档写入
-- GitHub Actions 每日自动触发（UTC 01:00 = 北京时间 09:00）
-- 飞书 Block API 基础用法已打通，常见坑已归档
+- GitHub Actions 每日自动触发，**定时改为 UTC 23:50（北京时间 07:50）**，在 GitHub Trending 重置前抓完整日榜
+- **新增 `src/ai_summarizer.py`**：接入 Google Gemini 2.0 Flash，一次 API 调用批量生成每条摘要 + 每日总结，写回各 item 的 `summary` 字段
+- **重写 `src/feishu_writer.py`** 排版：
+  - 版块顺序改为 Anthropic → GitHub → YouTube
+  - 日期标题改为 `🗞️ MM.DD`（heading1，北京时间）
+  - 顶部总结框用 quote 块（block_type=15）+ 💥 emoji 模拟
+  - 每条内容：一级 bullet + 子级 bullet 放 AI 摘要
+  - 新内容插入文档**顶部**（`index=0`），最新日期始终在最上面
+- **更新 `src/anthropic_crawler.py`**：GitHub 仓库过滤为 7 天内有更新的，避免展示老仓库
+- **更新 `src/main.py`**：串联 AI 摘要流程，爬取完成后调用 `enrich_with_summaries`
+- **依赖替换**：`google-generativeai`（已废弃）→ `google-genai>=1.0.0`
+- 所有 GitHub Secrets 已配置：`FEISHU_APP_ID` / `FEISHU_APP_SECRET` / `FEISHU_DOC_TOKEN` / `YOUTUBE_API_KEY` / `GEMINI_API_KEY` / `ANTHROPIC_API_KEY`（备用）
+- 代码已 push 到 https://github.com/lix17754-svg/AI-news-agent
 
 ### 🔜 下一步（按优先级）
-- **优化飞书文档排版美观度**：按用户定义的逻辑重新组织每次写入的版式
-  - 需先与用户确认具体排版逻辑（层级结构、标题样式、分割线使用规则、emoji 装饰等）
-  - 然后改写 `src/feishu_writer.py`，统一封装排版函数
-  - 验证：本地 `python main.py` 后人工检查飞书文档视觉效果
+- **明天早上 07:50 等待第一次完整自动运行**，去飞书文档验证：AI 摘要是否正常生成、排版是否符合预期
+- **Anthropic 博客标题清洗**：部分条目标题格式混乱（如 `Jun 3, 2026AnnouncementsXXX`），需改进 `_get_anthropic_blog` 的 title 提取逻辑
+- **飞书 callout 橙色框**：目前用 quote 块（竖线样式）代替，飞书 callout（block_type=34）API 参数未公开，后续可尝试研究或找飞书官方文档
 
 ### ⚠️ 注意事项 / 踩过的坑
+- **飞书嵌套块不能内联创建**：`children` 字段放在块定义里会报 9499 错误。正确做法：先 POST 父块拿到 `block_id`，再 POST children 到该 `block_id`。已在 `_push` / `_push_to` 方法中实现
+- **飞书 block_type=34（callout）不可用**：尝试多次均报 1770001，暂用 block_type=15（quote）替代
+- **飞书 index=0 插入顶部**：在 `_post_children` 的 payload 加 `"index": 0` 即可将新内容插入文档最顶部；子块不需要加 index
+- **倒序逐块插入**：因为每块都用 `index=0`，需要 `reversed(blocks)` 倒序插入，否则顺序会颠倒
+- **google-generativeai 已废弃**：升级后会报 FutureWarning，且旧模型名（gemini-1.5-flash 等）在 v1beta 接口下 404。必须换用 `google-genai` 包，`from google import genai`，用 `client.models.generate_content(model="gemini-2.0-flash", ...)`
+- **Gemini 免费 tier 每分钟限速**：本地多次测试会触发 429，重试间隔设为 35s/70s。生产环境每天只跑一次，不会触发
+- **GitHub Actions push workflow 文件需要 workflow scope**：普通 PAT 无法 push `.github/workflows/` 下的文件，需在 GitHub 网页端直接编辑 daily.yml
 - 排版改动只改 `feishu_writer.py`，不要动爬虫逻辑；数据结构保持向后兼容
-- 飞书 block 写入是追加模式，每次运行会在文档末尾插入新内容，排版需整体考虑"每日一节"的分隔方式
+- 飞书 block 写入改为插入顶部（index=0），每次新内容在最上面

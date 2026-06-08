@@ -33,17 +33,19 @@ def generate_summaries(official_items, github_items, reading_items):
             entry = f"{i}. [{source}] {title}"
         lines.append(entry)
 
-    prompt = f"""你是一个 AI 科技资讯日报助手。以下是今日 AI 领域的最新内容（共 {len(all_items)} 条）：
+    prompt = f"""你是一个 AI 科技资讯周报助手。以下是本周 AI 领域的最新内容（共 {len(all_items)} 条）：
 
 {chr(10).join(lines)}
 
 请生成：
-1. daily_summary：3-5 句话，叙述体，有观点。格式：今天最重要的事是什么 → 背景/原因 → 对行业意味着什么。不要只列举，要有分析和判断。
-2. summaries：长度恰好为 {len(all_items)} 的数组，按顺序一一对应每条内容，每条 1 句话（20-40 字），说清楚"是什么 + 为什么值得关注"。
+1. weekly_summary：3-5 句话，叙述体，有观点。说清楚本周最重要的 1-2 件事、为什么重要、对行业意味着什么。
+   【严格禁止使用以下模糊词汇】：提升、加速、进一步、前沿、新阶段、竞争加剧、持续发展。
+   【必须做到】：出现具体产品名、功能名或数字，让不知情的人看完就知道发生了什么。
+2. summaries：长度恰好为 {len(all_items)} 的数组，按顺序一一对应每条内容，每条 1 句话（20-40 字），说清楚"是什么 + 为什么值得关注"，同样禁止模糊词。
 
 严格按以下 JSON 格式输出，不要有任何其他内容：
 {{
-  "daily_summary": "...",
+  "weekly_summary": "...",
   "summaries": [{", ".join(['"摘要"'] * len(all_items))}]
 }}"""
 
@@ -79,4 +81,4 @@ def enrich_with_summaries(official_items, github_items, reading_items):
     for i, item in enumerate(all_items):
         item["summary"] = summaries[i] if i < len(summaries) else ""
 
-    return result.get("daily_summary", "")
+    return result.get("weekly_summary", "") or result.get("daily_summary", "")

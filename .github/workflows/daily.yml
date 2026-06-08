@@ -1,8 +1,8 @@
-name: AI News Daily Agent
+name: AI News Weekly Agent
 
 on:
   schedule:
-    - cron: '50 23 * * *'
+    - cron: '50 23 * * 0'  # 每周日 23:50 UTC = 周一 07:50 北京时间
   workflow_dispatch:
 
 jobs:
@@ -25,10 +25,9 @@ jobs:
 
       - name: Run AI News Agent
         env:
-          FEISHU_APP_ID:     ${{ secrets.FEISHU_APP_ID }}
-          FEISHU_APP_SECRET: ${{ secrets.FEISHU_APP_SECRET }}
-          FEISHU_DOC_TOKEN:  ${{ secrets.FEISHU_DOC_TOKEN }}
-          YOUTUBE_API_KEY:   ${{ secrets.YOUTUBE_API_KEY }}
+          FEISHU_APP_ID:      ${{ secrets.FEISHU_APP_ID }}
+          FEISHU_APP_SECRET:  ${{ secrets.FEISHU_APP_SECRET }}
+          FEISHU_DOC_TOKEN:   ${{ secrets.FEISHU_DOC_TOKEN }}
           OPENAI_API_KEY:     ${{ secrets.OPENAI_API_KEY }}
         run: |
           cd src

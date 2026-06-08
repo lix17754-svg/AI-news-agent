@@ -109,15 +109,17 @@ class FeishuDocWriter:
             if j < len(created):
                 self._push_to(created[j]["block_id"], children)
 
-    def write_daily_report(self, official_items, github_items, reading_items, daily_summary=""):
-        today = (datetime.datetime.utcnow() + datetime.timedelta(hours=8)).strftime("%m.%d")
+    def write_weekly_report(self, official_items, github_items, reading_items, weekly_summary=""):
+        now_bj = datetime.datetime.utcnow() + datetime.timedelta(hours=8)
+        week_end = now_bj.strftime("%m.%d")
+        week_start = (now_bj - datetime.timedelta(days=6)).strftime("%m.%d")
         B = []
 
-        # 日期标题
-        B.append(_h1([_el(f"🗞️ {today}")]))
+        # 日期标题（周报范围）
+        B.append(_h1([_el(f"🗞️ {week_start} - {week_end} 周报")]))
 
-        # 今日速览
-        if not daily_summary:
+        # 本周速览
+        if not weekly_summary:
             parts = []
             if official_items:
                 parts.append(f"官方动态 {len(official_items)} 条")
@@ -125,11 +127,11 @@ class FeishuDocWriter:
                 parts.append(f"GitHub 热门 {len(github_items)} 个")
             if reading_items:
                 parts.append(f"精读 {len(reading_items)} 篇")
-            daily_summary = "今日收录：" + "、".join(parts) + "。"
-        B.append(_callout(daily_summary))
+            weekly_summary = "本周收录：" + "、".join(parts) + "。"
+        B.append(_callout(weekly_summary))
 
         # 官方动态
-        B.append(_h2([_el("🏛️ 官方动态")]))
+        B.append(_h2([_el("🏛️ 本周官方动态")]))
         for source in ["Anthropic", "OpenAI", "DeepMind"]:
             items = [i for i in official_items if i.get("source") == source]
             if not items:
@@ -142,7 +144,7 @@ class FeishuDocWriter:
                     ))
 
         # GitHub 热门
-        B.append(_h2([_el("🔥 GitHub 热门（AI）")]))
+        B.append(_h2([_el("🔥 本周 GitHub 热门（AI）")]))
         if not github_items:
             B.append(_bullet([_el("今日无 AI 相关热门仓库")]))
         else:
@@ -156,8 +158,8 @@ class FeishuDocWriter:
                     sub_text=g.get("summary", ""),
                 ))
 
-        # 每日精读
-        B.append(_h2([_el("📖 每日精读")]))
+        # 每周精读
+        B.append(_h2([_el("📖 本周精读")]))
         for source in ["Simon Willison", "宝玉"]:
             items = [i for i in reading_items if i.get("source") == source]
             if not items:
