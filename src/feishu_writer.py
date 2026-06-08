@@ -36,17 +36,13 @@ def _bullet(elements, sub_text=""):
     return blk
 
 
-def _callout(summary_text):
-    return {
-        "block_type": 15,
-        "quote": {
-            "elements": [
-                _el("💥 今日速览：", bold=True),
-                _el("  " + summary_text),
-            ],
-            "style": {"align": 1},
-        },
-    }
+def _analysis_blocks(summary_text):
+    """将多段分析文本拆成多个段落块，每段独立成块"""
+    blocks = [_h2([_el("🧠 本周深度分析")])]
+    paragraphs = [p.strip() for p in summary_text.split("\n\n") if p.strip()]
+    for para in paragraphs:
+        blocks.append(_text_blk([_el(para)]))
+    return blocks
 
 
 class FeishuDocWriter:
@@ -118,8 +114,10 @@ class FeishuDocWriter:
         # 日期标题（周报范围）
         B.append(_h1([_el(f"🗞️ {week_start} - {week_end} 周报")]))
 
-        # 本周速览
-        if not weekly_summary:
+        # 本周深度分析
+        if weekly_summary:
+            B.extend(_analysis_blocks(weekly_summary))
+        else:
             parts = []
             if official_items:
                 parts.append(f"官方动态 {len(official_items)} 条")
@@ -127,8 +125,8 @@ class FeishuDocWriter:
                 parts.append(f"GitHub 热门 {len(github_items)} 个")
             if reading_items:
                 parts.append(f"精读 {len(reading_items)} 篇")
-            weekly_summary = "本周收录：" + "、".join(parts) + "。"
-        B.append(_callout(weekly_summary))
+            B.append(_h2([_el("🧠 本周深度分析")]))
+            B.append(_text_blk([_el("本周收录：" + "、".join(parts) + "。")]))
 
         # 官方动态
         B.append(_h2([_el("🏛️ 本周官方动态")]))
