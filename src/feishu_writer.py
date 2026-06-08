@@ -1,5 +1,5 @@
 """
-飞书文档写入器 - 排版优化版
+飞书文档写入器
 block_type=2 的字段名是 "text"，不是 "paragraph"
 """
 import datetime
@@ -28,7 +28,6 @@ def _h2(elements):
 
 
 def _bullet(elements, sub_text=""):
-    """一级 bullet；sub_text 非空时带一个子级缩进 bullet"""
     blk = {"block_type": 12, "bullet": {"elements": elements, "style": {"align": 1}}}
     if sub_text:
         blk["children"] = [
@@ -38,12 +37,11 @@ def _bullet(elements, sub_text=""):
 
 
 def _callout(summary_text):
-    """用 quote 块（block_type=15）模拟总结框，飞书 callout API 块类型未公开"""
     return {
         "block_type": 15,
         "quote": {
             "elements": [
-                _el("💥 总结：", bold=True),
+                _el("💥 今日速览：", bold=True),
                 _el("  " + summary_text),
             ],
             "style": {"align": 1},
@@ -76,7 +74,6 @@ class FeishuDocWriter:
         return {"Authorization": f"Bearer {self._token()}", "Content-Type": "application/json"}
 
     def _post_children(self, parent_id, blocks, index=None):
-        """向指定父块写入 blocks，返回创建后的块列表（含 block_id）"""
         payload = {"children": blocks}
         if index is not None:
             payload["index"] = index
@@ -93,8 +90,6 @@ class FeishuDocWriter:
         return d.get("data", {}).get("children", [])
 
     def _push(self, blocks):
-        """逐块写入文档顶部（index=0）；有 children 的块先创建父块，再递归写入子块"""
-        # 倒序逐块插入到 index=0，保证最终顺序正确
         for blk in reversed(blocks):
             children = blk.pop("children", None)
             created = self._post_children(self.doc_token, [blk], index=0)
@@ -102,7 +97,6 @@ class FeishuDocWriter:
                 self._push_to(created[0]["block_id"], children)
 
     def _push_to(self, parent_id, blocks):
-        """递归向任意父块写入子块（顺序追加）"""
         pending_children = {}
         clean_blocks = []
         for j, blk in enumerate(blocks):
@@ -110,45 +104,48 @@ class FeishuDocWriter:
             clean_blocks.append(blk)
             if children:
                 pending_children[j] = children
-
         created = self._post_children(parent_id, clean_blocks)
-
         for j, children in pending_children.items():
             if j < len(created):
                 self._push_to(created[j]["block_id"], children)
 
-    def write_daily_report(self, youtube_items, github_items, anthropic_items, daily_summary=""):
-        # 用北京时间（UTC+8）作为报告日期
+    def write_daily_report(self, official_items, github_items, reading_items, daily_summary=""):
         today = (datetime.datetime.utcnow() + datetime.timedelta(hours=8)).strftime("%m.%d")
         B = []
 
         # 日期标题
         B.append(_h1([_el(f"🗞️ {today}")]))
 
-        # 总结 callout
+        # 今日速览
         if not daily_summary:
             parts = []
-            if anthropic_items:
-                parts.append(f"Anthropic {len(anthropic_items)} 条动态")
+            if official_items:
+                parts.append(f"官方动态 {len(official_items)} 条")
             if github_items:
-                parts.append(f"GitHub 热门 {len(github_items)} 个项目")
-            if youtube_items:
-                parts.append(f"YouTube {len(youtube_items)} 个新视频")
+                parts.append(f"GitHub 热门 {len(github_items)} 个")
+            if reading_items:
+                parts.append(f"精读 {len(reading_items)} 篇")
             daily_summary = "今日收录：" + "、".join(parts) + "。"
         B.append(_callout(daily_summary))
 
-        # Anthropic 动态
-        if anthropic_items:
-            B.append(_h2([_el("🤖 Anthropic 动态")]))
-            for a in anthropic_items:
-                B.append(_bullet(
-                    elements=[_el(a["title"], url=a["url"])],
-                    sub_text=a.get("summary", ""),
-                ))
+        # 官方动态
+        B.append(_h2([_el("🏛️ 官方动态")]))
+        for source in ["Anthropic", "OpenAI", "DeepMind"]:
+            items = [i for i in official_items if i.get("source") == source]
+            if not items:
+                B.append(_bullet([_el(f"{source} 今日无更新")]))
+            else:
+                for item in items:
+                    B.append(_bullet(
+                        elements=[_el(f"[{source}] {item['title']}", url=item["url"])],
+                        sub_text=item.get("summary", ""),
+                    ))
 
-        # GitHub 今日热门
-        if github_items:
-            B.append(_h2([_el("🔥 GitHub 今日热门")]))
+        # GitHub 热门
+        B.append(_h2([_el("🔥 GitHub 热门（AI）")]))
+        if not github_items:
+            B.append(_bullet([_el("今日无 AI 相关热门仓库")]))
+        else:
             for g in github_items:
                 stars = g.get("stars_today", "")
                 B.append(_bullet(
@@ -159,19 +156,18 @@ class FeishuDocWriter:
                     sub_text=g.get("summary", ""),
                 ))
 
-        # YouTube 新视频
-        if youtube_items:
-            B.append(_h2([_el("🎬 YouTube 新视频")]))
-            for v in youtube_items:
-                date_str = v.get("published_at", "")[5:]  # YYYY-MM-DD → MM-DD
-                B.append(_bullet(
-                    elements=[
-                        _el(f"【{v['channel']}】"),
-                        _el(v["title"], url=v["url"]),
-                        _el(f"  ({date_str})"),
-                    ],
-                    sub_text=v.get("summary", ""),
-                ))
+        # 每日精读
+        B.append(_h2([_el("📖 每日精读")]))
+        for source in ["Simon Willison", "宝玉"]:
+            items = [i for i in reading_items if i.get("source") == source]
+            if not items:
+                B.append(_bullet([_el(f"{source} 今日无更新")]))
+            else:
+                for item in items:
+                    B.append(_bullet(
+                        elements=[_el(item["title"], url=item["url"])],
+                        sub_text=item.get("summary", ""),
+                    ))
 
         B.append({"block_type": 22, "divider": {}})
 
