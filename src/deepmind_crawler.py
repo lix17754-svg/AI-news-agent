@@ -33,7 +33,7 @@ def _is_recent(month_year_text: str, weeks_back: int = 5) -> bool:
     """判断月份是否在最近 N 周内（月粒度）"""
     parsed = _parse_month_year(month_year_text)
     if not parsed:
-        return True  # 无法判断时放行
+        return False  # 无法判断时跳过，避免旧文章漏进来
     year, month = parsed
     cutoff = datetime.datetime.utcnow() - datetime.timedelta(weeks=weeks_back)
     article_date = datetime.datetime(year, month, 28)  # 取月末保守估计
@@ -72,7 +72,7 @@ def get_deepmind_news(limit: int = 5) -> list[dict]:
                     break
                 p = p.parent
 
-            if month_text and not _is_recent(month_text):
+            if not month_text or not _is_recent(month_text):
                 continue
 
             url = f"https://deepmind.google{href}"

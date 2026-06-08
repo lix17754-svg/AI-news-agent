@@ -61,8 +61,8 @@ def get_anthropic_news(limit: int = 5, days_back: int = 7) -> list[dict]:
                     break
                 p = p.parent
 
-            # 有日期的严格过滤；无日期的保留（无法判断就放行）
-            if date_str and date_str < cutoff:
+            # 无法解析日期或日期太旧，均跳过
+            if not date_str or date_str < cutoff:
                 continue
 
             url = f"https://www.anthropic.com{href}" if href.startswith("/") else href
