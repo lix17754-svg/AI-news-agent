@@ -51,15 +51,11 @@ def get_anthropic_news(limit: int = 5, days_back: int = 7) -> list[dict]:
                 continue
             seen.add(href)
 
-            # 向上找最近的 time 标签
+            # time 标签就在 <a> 内部，直接找
             date_str = ""
-            p = a.parent
-            for _ in range(8):
-                t = p.find("time")
-                if t:
-                    date_str = _parse_date(t.get_text(strip=True))
-                    break
-                p = p.parent
+            t = a.find("time")
+            if t:
+                date_str = _parse_date(t.get_text(strip=True))
 
             # 无法解析日期或日期太旧，均跳过
             if not date_str or date_str < cutoff:
